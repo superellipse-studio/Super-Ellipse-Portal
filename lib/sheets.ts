@@ -165,7 +165,7 @@ export async function getAllData(): Promise<PortalData> {
     project_id: r.data.project_id,
     slot: Number(r.data.slot) || 0,
     member: r.data.member || "",
-    paid: r.data.paid === "true",
+    paid: r.data.paid.toLowerCase() === "true",
   }));
 
   return { projects, tasks, invoices, team, timeline, achievements };
