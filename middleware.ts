@@ -7,6 +7,7 @@ export async function middleware(req: NextRequest) {
   const isPublic =
     pathname === "/login" ||
     pathname === "/api/auth" ||
+    pathname === "/api/cron/daily-brief" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname === "/manifest.json" ||
