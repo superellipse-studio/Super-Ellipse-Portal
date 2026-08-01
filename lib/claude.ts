@@ -75,6 +75,60 @@ const TOOLS = [
     },
   },
   {
+    name: "add_timeline_stage",
+    description: "Add a dated production stage to a project timeline/calendar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        project_name: { type: "string" },
+        label: { type: "string" },
+        start_date: { type: "string", description: "ISO date YYYY-MM-DD" },
+        end_date: { type: "string", description: "ISO date YYYY-MM-DD" },
+        status: { type: "string", enum: ["upcoming", "current", "completed"] },
+        sort_order: { type: "number" },
+      },
+      required: ["project_name", "label", "start_date", "end_date"],
+    },
+  },
+  {
+    name: "update_timeline_stage",
+    description: "Reschedule, rename, or change the status of an existing project timeline stage.",
+    input_schema: {
+      type: "object",
+      properties: {
+        project_name: { type: "string" },
+        stage_search: { type: "string" },
+        label: { type: "string" },
+        start_date: { type: "string", description: "ISO date YYYY-MM-DD" },
+        end_date: { type: "string", description: "ISO date YYYY-MM-DD" },
+        status: { type: "string", enum: ["upcoming", "current", "completed"] },
+        sort_order: { type: "number" },
+      },
+      required: ["project_name", "stage_search"],
+    },
+  },
+  {
+    name: "set_current_timeline_stage",
+    description: "Make one timeline stage the current phase of a project. This also synchronizes the project's current_phase field.",
+    input_schema: {
+      type: "object",
+      properties: {
+        project_name: { type: "string" },
+        stage_search: { type: "string" },
+      },
+      required: ["project_name", "stage_search"],
+    },
+  },
+  {
+    name: "set_project_timeline_color",
+    description: "Set a project's calendar color using a CSS hex color such as #D97757.",
+    input_schema: {
+      type: "object",
+      properties: { project_name: { type: "string" }, color: { type: "string" } },
+      required: ["project_name", "color"],
+    },
+  },
+  {
     name: "update_project_category",
     description: "Move a project between sections — ongoing, prospective, completed, or on_hold. Use 'on_hold' for clients who have gone quiet / stopped responding / paused without a clear status. Use for requests like 'put X on hold', 'mark X as stalled', 'move X back to ongoing'.",
     input_schema: {
@@ -197,6 +251,48 @@ async function executeTool(name: string, input: any): Promise<CommandResult> {
         type: input.type,
       });
       return { message: `Created project "${input.name}" (${id}).`, action: "add_project" };
+    }
+    case "add_timeline_stage": {
+      const project = await resolveProjectId(input.project_name);
+      const id = await db.addTimelineItem({
+        project_id: project.id,
+        label: input.label,
+        start_date: input.start_date,
+        end_date: input.end_date,
+        status: input.status || "upcoming",
+        sort_order: input.sort_order || 0,
+      });
+      if (input.status === "current") await db.setCurrentTimelineStage(project.id, id);
+      return { message: `Added ${input.label} to ${project.name}'s timeline.`, action: "add_timeline_stage" };
+    }
+    case "update_timeline_stage": {
+      const project = await resolveProjectId(input.project_name);
+      const matches = await db.findTimelineItems({ project_id: project.id, labelContains: input.stage_search });
+      if (matches.length === 0) throw new Error(`Couldn't find a timeline stage matching "${input.stage_search}"`);
+      const target = matches[0];
+      await db.updateTimelineItem(target.data.id, {
+        label: input.label,
+        start_date: input.start_date,
+        end_date: input.end_date,
+        status: input.status,
+        sort_order: input.sort_order,
+      });
+      if (input.status === "current") await db.setCurrentTimelineStage(project.id, target.data.id);
+      return { message: `Updated "${target.data.label}" for ${project.name}.`, action: "update_timeline_stage" };
+    }
+    case "set_current_timeline_stage": {
+      const project = await resolveProjectId(input.project_name);
+      const matches = await db.findTimelineItems({ project_id: project.id, labelContains: input.stage_search });
+      if (matches.length === 0) throw new Error(`Couldn't find a timeline stage matching "${input.stage_search}"`);
+      await db.setCurrentTimelineStage(project.id, matches[0].data.id);
+      return { message: `${project.name} is now at "${matches[0].data.label}".`, action: "set_current_timeline_stage" };
+    }
+    case "set_project_timeline_color": {
+      const project = await resolveProjectId(input.project_name);
+      const color = String(input.color || "").trim();
+      if (!/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("Color must be a 6-digit hex value, for example #D97757");
+      await db.updateProjectTimelineColor(project.id, color);
+      return { message: `Updated ${project.name}'s calendar color.`, action: "set_project_timeline_color" };
     }
     case "update_project_category": {
       const project = await resolveProjectId(input.project_name);

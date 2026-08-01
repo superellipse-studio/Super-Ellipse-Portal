@@ -40,7 +40,12 @@ export default function CalendarClient({
   const [viewDate, setViewDate] = useState<Date>(new Date());
 
   const projectNames: Record<string, string> = {};
-  projects.forEach((p) => (projectNames[p.id] = p.name));
+  const projectColors: Record<string, string> = {};
+  const fallbackColors = ["#D97757", "#6F8F72", "#7C83B8", "#C39B45", "#A56A8A", "#4F8C8A", "#B06B55", "#718096"];
+  projects.forEach((p, index) => {
+    projectNames[p.id] = p.name;
+    projectColors[p.id] = p.timeline_color || fallbackColors[index % fallbackColors.length];
+  });
 
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
@@ -138,11 +143,28 @@ export default function CalendarClient({
                   </div>
                 </div>
                 <div className="space-y-1 mt-1">
-                  {dayTimelines.slice(0, 2).map((t) => (
-                    <div key={t.id} title={t.label} className="bg-black/10 text-black text-[10px] px-1 py-0.5 rounded truncate">
-                      {t.label}
-                    </div>
-                  ))}
+                  {dayTimelines.slice(0, 3).map((t) => {
+                    const startsToday = isSameDay(t.start, day);
+                    const endsToday = isSameDay(t.end, day);
+                    const projectName = projectNames[t.project_id] || t.project_id;
+                    return (
+                      <div
+                        key={t.id}
+                        title={`${projectName} — ${t.label}`}
+                        className={`text-white text-[9px] px-1.5 py-0.5 truncate ${
+                          startsToday ? "rounded-l-md" : "rounded-l-none"
+                        } ${endsToday ? "rounded-r-md" : "rounded-r-none"} ${
+                          t.status === "completed" ? "opacity-45" : t.status === "current" ? "font-bold" : "opacity-80"
+                        }`}
+                        style={{ backgroundColor: projectColors[t.project_id] || "#718096" }}
+                      >
+                        {startsToday ? `${projectName} · ${t.label}` : t.label}
+                      </div>
+                    );
+                  })}
+                  {dayTimelines.length > 3 && (
+                    <div className="text-[9px] text-black/50 px-1">+{dayTimelines.length - 3} more</div>
+                  )}
                   {dayTasks.slice(0, 2).map((t) => (
                     <div
                       key={t.id}
@@ -164,7 +186,10 @@ export default function CalendarClient({
           {projects
             .filter((p) => timeline.some((t) => t.project_id === p.id))
             .map((p) => (
-              <span key={p.id}>■ {p.name}</span>
+              <span key={p.id} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: projectColors[p.id] }} />
+                {p.name}
+              </span>
             ))}
           <span className="font-medium text-black">$ Invoice due</span>
           <span className="flex items-center gap-1">
@@ -224,7 +249,7 @@ export default function CalendarClient({
                   const isStart = isSameDay(t.start, selectedDay);
                   return (
                     <div key={t.id} className="flex items-start gap-3 px-5 py-4">
-                      <div className="w-2.5 h-2.5 mt-1 shrink-0 rounded-full bg-black/20" />
+                      <div className="w-2.5 h-2.5 mt-1 shrink-0 rounded-full" style={{ backgroundColor: projectColors[t.project_id] || "#718096" }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm leading-snug">{t.label}</p>
                         <p className="text-[10px] uppercase tracking-wide text-black/45 mt-0.5">

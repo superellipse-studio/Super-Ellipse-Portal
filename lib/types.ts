@@ -10,6 +10,7 @@ export interface Project {
   drive_link: string;
   subtitle: string;
   type: string;
+  timeline_color: string;
 }
 
 export interface Task {
@@ -44,6 +45,8 @@ export interface TimelineItem {
   label: string;
   start_date: string;
   end_date: string;
+  status: "upcoming" | "current" | "completed" | string;
+  sort_order: number;
 }
 
 export interface Achievement {

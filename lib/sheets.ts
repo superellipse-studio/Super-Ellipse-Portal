@@ -75,11 +75,11 @@ async function updateCell(tab: string, rowNumber: number, colLetter: string, val
 }
 
 const COLS = {
-  Projects: ["id", "client", "name", "category", "currency", "total_fee", "paid", "current_phase", "drive_link", "subtitle", "type"],
+  Projects: ["id", "client", "name", "category", "currency", "total_fee", "paid", "current_phase", "drive_link", "subtitle", "type", "timeline_color"],
   Tasks: ["id", "project_id", "title", "assignee", "due_date", "status", "scope"],
   Invoices: ["id", "project_id", "label", "amount", "currency", "due_date", "status"],
   Team: ["id", "name", "role"],
-  Timeline: ["id", "project_id", "label", "start_date", "end_date"],
+  Timeline: ["id", "project_id", "label", "start_date", "end_date", "status", "sort_order"],
   Achievements: ["id", "project_id", "slot", "member", "paid"],
 };
 
@@ -124,6 +124,7 @@ export async function getAllData(): Promise<PortalData> {
     drive_link: r.data.drive_link,
     subtitle: r.data.subtitle,
     type: r.data.type,
+    timeline_color: r.data.timeline_color || "",
   }));
 
   const tasks: Task[] = taskRows.map((r) => ({
@@ -158,6 +159,8 @@ export async function getAllData(): Promise<PortalData> {
     label: r.data.label,
     start_date: r.data.start_date,
     end_date: r.data.end_date,
+    status: r.data.status || "upcoming",
+    sort_order: Number(r.data.sort_order) || 0,
   }));
 
   const achievements: Achievement[] = achRows.map((r) => ({
@@ -277,6 +280,7 @@ export async function addProject(input: {
     "",
     "",
     input.type,
+    "",
   ]);
   return id;
 }
@@ -288,6 +292,85 @@ export async function findProjectByName(query: string): Promise<{ id: string; na
     (r) => r.data.name.toLowerCase().includes(q) || r.data.client.toLowerCase().includes(q)
   );
   return match ? { id: match.data.id, name: match.data.name, currency: match.data.currency } : null;
+}
+
+
+// ---- Timeline write operations ----
+
+export async function addTimelineItem(input: {
+  project_id: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+  status?: string;
+  sort_order?: number;
+}) {
+  const rows = await readTab("Timeline");
+  const id = nextId(rows, "timeline");
+  await appendRow("Timeline", [
+    id,
+    input.project_id,
+    input.label,
+    input.start_date,
+    input.end_date,
+    input.status || "upcoming",
+    String(input.sort_order || 0),
+  ]);
+  return id;
+}
+
+export async function findTimelineItems(query: { project_id?: string; labelContains?: string }) {
+  const rows = await readTab("Timeline");
+  return rows.filter((r) => {
+    const okProject = query.project_id ? r.data.project_id === query.project_id : true;
+    const okLabel = query.labelContains
+      ? r.data.label.toLowerCase().includes(query.labelContains.toLowerCase())
+      : true;
+    return okProject && okLabel;
+  });
+}
+
+export async function updateTimelineItem(
+  timelineId: string,
+  updates: { label?: string; start_date?: string; end_date?: string; status?: string; sort_order?: number }
+) {
+  const rows = await readTab("Timeline");
+  const row = rows.find((r) => r.data.id === timelineId);
+  if (!row) throw new Error(`Timeline item ${timelineId} not found`);
+  for (const [field, value] of Object.entries(updates)) {
+    if (value === undefined) continue;
+    await updateCell(
+      "Timeline",
+      row.rowNumber,
+      colLetterFor("Timeline", field),
+      String(value)
+    );
+  }
+}
+
+export async function setCurrentTimelineStage(projectId: string, timelineId: string) {
+  const rows = await readTab("Timeline");
+  const target = rows.find((r) => r.data.id === timelineId && r.data.project_id === projectId);
+  if (!target) throw new Error(`Timeline item ${timelineId} not found for project ${projectId}`);
+
+  for (const row of rows.filter((r) => r.data.project_id === projectId)) {
+    const nextStatus = row.data.id === timelineId
+      ? "current"
+      : row.data.status === "current"
+      ? "completed"
+      : row.data.status || "upcoming";
+    if (nextStatus !== row.data.status) {
+      await updateCell("Timeline", row.rowNumber, colLetterFor("Timeline", "status"), nextStatus);
+    }
+  }
+  await updateProjectPhase(projectId, target.data.label);
+}
+
+export async function updateProjectTimelineColor(projectId: string, color: string) {
+  const rows = await readTab("Projects");
+  const row = rows.find((r) => r.data.id === projectId);
+  if (!row) throw new Error(`Project ${projectId} not found`);
+  await updateCell("Projects", row.rowNumber, colLetterFor("Projects", "timeline_color"), color);
 }
 
 // ---- Invoice forecasting (pure calculation, no sheet writes) ----
