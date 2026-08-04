@@ -76,7 +76,7 @@ async function updateCell(tab: string, rowNumber: number, colLetter: string, val
 
 const COLS = {
   Projects: ["id", "client", "name", "category", "currency", "total_fee", "paid", "current_phase", "drive_link", "subtitle", "type", "timeline_color"],
-  Tasks: ["id", "project_id", "title", "assignee", "due_date", "status", "scope"],
+  Tasks: ["id", "project_id", "timeline_id", "title", "assignee", "due_date", "status", "scope"],
   Invoices: ["id", "project_id", "label", "amount", "currency", "due_date", "status"],
   Team: ["id", "name", "role"],
   Timeline: ["id", "project_id", "label", "start_date", "end_date", "status", "sort_order"],
@@ -130,6 +130,7 @@ export async function getAllData(): Promise<PortalData> {
   const tasks: Task[] = taskRows.map((r) => ({
     id: r.data.id,
     project_id: r.data.project_id,
+    timeline_id: r.data.timeline_id || "",
     title: r.data.title,
     assignee: r.data.assignee,
     due_date: r.data.due_date,
@@ -178,6 +179,7 @@ export async function getAllData(): Promise<PortalData> {
 
 export async function addTask(input: {
   project_id: string;
+  timeline_id?: string;
   title: string;
   assignee: string;
   due_date: string;
@@ -188,6 +190,7 @@ export async function addTask(input: {
   await appendRow("Tasks", [
     id,
     input.project_id,
+    input.timeline_id || "",
     input.title,
     input.assignee,
     input.due_date,

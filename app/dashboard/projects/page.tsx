@@ -248,9 +248,22 @@ function ProjectCard({ project, tasks }: { project: Project; tasks: Task[] }) {
       )}
 
       {tasks.length > 0 && (
-        <p className={`${cardLabel} mt-4 pt-4 border-t border-black/10`}>
-          Tasks — {doneCount} / {tasks.length} done
-        </p>
+        <details className="mt-4 pt-4 border-t border-black/10 group">
+          <summary className={`${cardLabel} cursor-pointer list-none flex items-center justify-between`}>
+            <span>Tasks — {doneCount} / {tasks.length} done</span>
+            <span className="text-black/40 group-open:rotate-180 transition-transform">⌄</span>
+          </summary>
+          <div className="mt-3 divide-y divide-black/10">
+            {tasks.map((task) => (
+              <div key={task.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
+                <span className={task.status === "done" ? "line-through text-black/35" : "text-black/75"}>
+                  {task.status === "done" ? "✓" : "○"} {task.title}
+                </span>
+                {task.due_date && <span className="text-black/40 whitespace-nowrap">Due {task.due_date}</span>}
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

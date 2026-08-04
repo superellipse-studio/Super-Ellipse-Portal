@@ -16,6 +16,7 @@ export interface Project {
 export interface Task {
   id: string;
   project_id: string;
+  timeline_id: string;
   title: string;
   assignee: string;
   due_date: string;
@@ -23,45 +24,8 @@ export interface Task {
   scope: "this_week" | "next_week" | "unscheduled" | string;
 }
 
-export interface Invoice {
-  id: string;
-  project_id: string;
-  label: string;
-  amount: number;
-  currency: string;
-  due_date: string;
-  status: "pending" | "paid" | string;
-}
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-}
-
-export interface TimelineItem {
-  id: string;
-  project_id: string;
-  label: string;
-  start_date: string;
-  end_date: string;
-  status: "upcoming" | "current" | "completed" | string;
-  sort_order: number;
-}
-
-export interface Achievement {
-  id: string;
-  project_id: string;
-  slot: number;
-  member: string;
-  paid: boolean;
-}
-
-export interface PortalData {
-  projects: Project[];
-  tasks: Task[];
-  invoices: Invoice[];
-  team: TeamMember[];
-  timeline: TimelineItem[];
-  achievements: Achievement[];
-}
+export interface Invoice { id: string; project_id: string; label: string; amount: number; currency: string; due_date: string; status: "pending" | "paid" | string; }
+export interface TeamMember { id: string; name: string; role: string; }
+export interface TimelineItem { id: string; project_id: string; label: string; start_date: string; end_date: string; status: "upcoming" | "current" | "completed" | string; sort_order: number; }
+export interface Achievement { id: string; project_id: string; slot: number; member: string; paid: boolean; }
+export interface PortalData { projects: Project[]; tasks: Task[]; invoices: Invoice[]; team: TeamMember[]; timeline: TimelineItem[]; achievements: Achievement[]; }

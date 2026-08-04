@@ -5,24 +5,6 @@ const MODEL = "claude-sonnet-5";
 
 const TOOLS = [
   {
-    name: "add_task",
-    description: "Add a new task/to-do item to a project, or to the internal Studio list.",
-    input_schema: {
-      type: "object",
-      properties: {
-        project_name: {
-          type: "string",
-          description: "Client or project name to attach this task to. Use 'studio' for internal/studio tasks not tied to a client.",
-        },
-        title: { type: "string" },
-        assignee: { type: "string", description: "Defaults to 'You' if not specified." },
-        due_date: { type: "string", description: "ISO date YYYY-MM-DD. Leave empty if not mentioned." },
-        scope: { type: "string", enum: ["this_week", "next_week", "unscheduled"], description: "Defaults to this_week." },
-      },
-      required: ["project_name", "title"],
-    },
-  },
-  {
     name: "complete_task",
     description: "Mark an existing task as done, matched by a text search on its title.",
     input_schema: {
@@ -163,7 +145,7 @@ export async function runCommand(command: string, data: PortalData): Promise<Com
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
   const system = `You are the command interpreter for a design studio's internal portal.
-The user will type a plain-English instruction. Pick exactly one tool that matches their intent and call it.
+The user will type a plain-English instruction. Pick exactly one tool that matches their intent and call it. New tasks must be created manually from the Tasks page, so never offer to create a task; explain that briefly if asked.
 Resolve project names loosely — the user may use a nickname or partial name, match it against the list below as best you can.
 If the command doesn't clearly map to any tool, or is missing required info, do not call a tool — just respond with a short question or clarification instead.
 
@@ -210,17 +192,6 @@ async function resolveProjectId(name: string): Promise<{ id: string; name: strin
 
 async function executeTool(name: string, input: any): Promise<CommandResult> {
   switch (name) {
-    case "add_task": {
-      const project = await resolveProjectId(input.project_name);
-      await db.addTask({
-        project_id: project.id,
-        title: input.title,
-        assignee: input.assignee || "You",
-        due_date: input.due_date || "",
-        scope: input.scope || "this_week",
-      });
-      return { message: `Added "${input.title}" to ${project.name}.`, action: "add_task" };
-    }
     case "complete_task": {
       const projectId = input.project_name
         ? (await resolveProjectId(input.project_name)).id
