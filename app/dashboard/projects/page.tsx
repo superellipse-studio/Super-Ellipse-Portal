@@ -17,6 +17,30 @@ const PHASES: { match: string; isInvoice?: boolean; isFeedback?: boolean }[] = [
   { match: "Hand Over" },
 ];
 
+
+function getPhaseProgress(project: Project) {
+  const currentPhase = (project.current_phase || "").trim().toLowerCase();
+  const phaseIndex = PHASES.findIndex((phase) => phase.match.toLowerCase() === currentPhase);
+
+  // Completed projects should always sit above active projects when they share
+  // the same visible phase. Unknown or blank phases stay at the bottom.
+  if (project.category === "completed") return PHASES.length;
+  return phaseIndex >= 0 ? phaseIndex : -1;
+}
+
+function sortProjectsByProgress(projects: Project[]) {
+  return projects
+    .map((project, originalIndex) => ({ project, originalIndex }))
+    .sort((a, b) => {
+      const progressDifference = getPhaseProgress(b.project) - getPhaseProgress(a.project);
+      if (progressDifference !== 0) return progressDifference;
+
+      // Keep the existing Sheet order for exact ties so cards do not jump around.
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(({ project }) => project);
+}
+
 function fmtMoney(amount: number, currency: string) {
   if (currency === "IDR") return `Rp ${amount.toLocaleString("id-ID")}`;
   return `$${amount.toLocaleString("en-US")}`;
@@ -206,7 +230,12 @@ function ProjectCard({ project, tasks }: { project: Project; tasks: Task[] }) {
           <h3 className="text-2xl font-bold mt-0.5">{project.name}</h3>
           {project.subtitle && <p className="text-sm text-black/50 italic mt-1">{project.subtitle}</p>}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {project.current_phase && (
+            <span className="rounded-full border border-black/20 px-3 py-1 text-xs text-black/70">
+              {project.current_phase}
+            </span>
+          )}
           {project.drive_link && (
             <a
               href={project.drive_link}
@@ -286,7 +315,7 @@ export default async function ProjectsPage() {
       </div>
 
       {groups.map((g) => {
-        const list = projects.filter((p) => p.category === g.category);
+        const list = sortProjectsByProgress(projects.filter((p) => p.category === g.category));
         return (
           <Collapsible
             key={g.category}
