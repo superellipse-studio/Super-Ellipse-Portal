@@ -6,6 +6,7 @@ import TaskStatusIcon from "../TaskStatusIcon";
 import { cardClass, cardLabel } from "../cardStyles";
 
 type Filter = "all" | "projects" | "studio";
+type ProjectVisibility = "active" | "completed" | "all";
 
 function TaskRow({ task }: { task: Task }) {
   return <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 py-3">
@@ -16,17 +17,33 @@ function TaskRow({ task }: { task: Task }) {
 
 export default function TasksClient({ tasks, projects, timeline, team }: { tasks: Task[]; projects: Project[]; timeline: TimelineItem[]; team: TeamMember[] }) {
   const router = useRouter();
-  const [filter,setFilter]=useState<Filter>("all"); const [show,setShow]=useState(false); const [saving,setSaving]=useState(false); const [error,setError]=useState("");
+  const [filter,setFilter]=useState<Filter>("all"); const [projectVisibility,setProjectVisibility]=useState<ProjectVisibility>("active"); const [show,setShow]=useState(false); const [saving,setSaving]=useState(false); const [error,setError]=useState("");
   const [form,setForm]=useState({title:"",project_id:"",timeline_id:"",due_date:"",assignee:"You"});
   const ongoing=projects.filter(p=>p.category==="ongoing");
   const stages=timeline.filter(t=>t.project_id===form.project_id).sort((a,b)=>a.sort_order-b.sort_order);
-  const visible=tasks.filter(t=>filter==="all" || (filter==="studio" ? t.project_id==="studio" : t.project_id!=="studio"));
+  const projectCategory=Object.fromEntries(projects.map(p=>[p.id,p.category]));
+  const visible=tasks.filter(t=>{
+    const sectionMatch=filter==="all" || (filter==="studio" ? t.project_id==="studio" : t.project_id!=="studio");
+    if(!sectionMatch) return false;
+    if(t.project_id==="studio") return projectVisibility!=="completed";
+    const isCompletedProject=projectCategory[t.project_id]==="completed";
+    if(projectVisibility==="active") return !isCompletedProject;
+    if(projectVisibility==="completed") return isCompletedProject;
+    return true;
+  });
   const grouped=useMemo(()=>{ const map:Record<string,Task[]>={}; visible.forEach(t=>(map[t.project_id] ||= []).push(t)); return map;},[visible]);
   const names=Object.fromEntries(projects.map(p=>[p.id,p.name])); const stageNames=Object.fromEntries(timeline.map(t=>[t.id,t.label]));
   async function submit(e:React.FormEvent){e.preventDefault();setSaving(true);setError(""); const r=await fetch('/api/tasks/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,scope:'this_week'})}); const j=await r.json(); setSaving(false); if(!r.ok){setError(j.error||'Could not create task');return;} setShow(false);setForm({title:"",project_id:"",timeline_id:"",due_date:"",assignee:"You"});router.refresh();}
   return <>
     <div className="flex items-center justify-between gap-4 mb-8"><h1 className="text-4xl font-bold">Tasks</h1><button onClick={()=>setShow(true)} className="rounded-full border border-white/30 px-4 py-2 text-sm hover:bg-white hover:text-black">+ New Task</button></div>
-    <div className="flex gap-2 mb-8">{([['all','All'],['projects','Projects'],['studio','Studio']] as const).map(([v,l])=><button key={v} onClick={()=>setFilter(v)} className={`rounded-full px-4 py-2 text-sm border ${filter===v?'bg-white text-black border-white':'border-white/20 text-gray-400'}`}>{l}</button>)}</div>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+      <div className="flex gap-2">{([['all','All'],['projects','Projects'],['studio','Studio']] as const).map(([v,l])=><button key={v} onClick={()=>setFilter(v)} className={`rounded-full px-4 py-2 text-sm border ${filter===v?'bg-white text-black border-white':'border-white/20 text-gray-400'}`}>{l}</button>)}</div>
+      {filter!=="studio"&&<select aria-label="Project task visibility" value={projectVisibility} onChange={e=>setProjectVisibility(e.target.value as ProjectVisibility)} className="rounded-full border border-white/20 bg-black px-4 py-2 text-sm text-gray-300 outline-none">
+        <option value="active">Active projects</option>
+        <option value="completed">Completed projects</option>
+        <option value="all">All projects</option>
+      </select>}
+    </div>
     <div className="space-y-4">{Object.entries(grouped).map(([pid,list])=><div className={cardClass} key={pid}><h2 className="font-bold text-lg mb-1">{pid==='studio'?'Studio':names[pid]||pid}</h2><div className="divide-y divide-black/10">{list.sort((a,b)=>(a.status==='done'?1:0)-(b.status==='done'?1:0)).map(t=><div key={t.id}>{t.timeline_id && <div className="label text-black/40 pt-3 pl-7">{stageNames[t.timeline_id]||'Project stage'}</div>}<TaskRow task={t}/></div>)}</div></div>)}</div>
     {visible.length===0&&<p className="text-gray-600">No tasks in this section.</p>}
     {show&&<div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-md flex items-center justify-center p-4"><form onSubmit={submit} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-sage text-black p-6 space-y-5 shadow-2xl ring-1 ring-white/20"><div className="flex justify-between"><h2 className="text-2xl font-bold">New Task</h2><button type="button" onClick={()=>setShow(false)}>✕</button></div>
