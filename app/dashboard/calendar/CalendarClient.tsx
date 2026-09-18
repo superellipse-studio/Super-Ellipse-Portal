@@ -176,11 +176,12 @@ export default function CalendarClient({
                       <div
                         key={t.id}
                         title={`${t.title} · ${format(t.start, "d MMM")} → ${format(t.end, "d MMM")}`}
-                        className={`text-[9px] px-1.5 py-0.5 truncate bg-black/10 ${
+                        className={`text-[9px] px-1.5 py-0.5 truncate text-white ${
                           startsToday ? "rounded-l-md" : "rounded-l-none"
                         } ${endsToday ? "rounded-r-md" : "rounded-r-none"} ${
-                          t.status === "done" ? "text-black/30 line-through opacity-60" : "text-black/70"
+                          t.status === "done" ? "line-through opacity-45" : "opacity-90"
                         }`}
+                        style={{ backgroundColor: projectColors[t.project_id] || "#718096" }}
                       >
                         {startsToday ? `Task · ${t.title}` : t.title}
                       </div>
@@ -203,7 +204,7 @@ export default function CalendarClient({
             ))}
           <span className="font-medium text-black">$ Invoice due</span>
           <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-black/50 inline-block" /> Task schedule
+            <span className="w-1.5 h-1.5 rounded-full bg-black/50 inline-block" /> Tasks use project color
           </span>
         </div>
       </div>

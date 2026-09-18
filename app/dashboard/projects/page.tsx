@@ -3,19 +3,13 @@ import { computeRemainingInvoices } from "@/lib/sheets";
 import { getUsdToIdrRate } from "@/lib/exchangeRate";
 import type { Project, Task } from "@/lib/types";
 import Collapsible from "../Collapsible";
+import { PROJECT_PHASES } from "@/lib/projectPhases";
 
-const PHASES: { match: string; isInvoice?: boolean; isFeedback?: boolean }[] = [
-  { match: "Down Payment 50%", isInvoice: true },
-  { match: "Design Direction" },
-  { match: "Feedback 1", isFeedback: true },
-  { match: "Design Phase 1" },
-  { match: "Feedback 2", isFeedback: true },
-  { match: "Design Phase 2" },
-  { match: "Invoice 30%", isInvoice: true },
-  { match: "Final Proposal" },
-  { match: "Invoice 20%", isInvoice: true },
-  { match: "Hand Over" },
-];
+const PHASES = PROJECT_PHASES.map((match) => ({
+  match,
+  isInvoice: match.includes("Payment") || match.includes("Invoice"),
+  isFeedback: match.startsWith("Feedback"),
+}));
 
 
 function getPhaseProgress(project: Project) {
