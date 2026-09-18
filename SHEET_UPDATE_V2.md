@@ -27,3 +27,17 @@ Studio/internal tasks use:
 ## 3. No other sheet changes
 
 The `Projects`, `Timeline`, `Team`, and other tabs stay as they are.
+
+## Task start dates (September 2026 update)
+
+Add one new column to the **Tasks** sheet:
+
+- Insert a column **between `assignee` and `due_date`**.
+- Name the new header exactly: `start_date`
+- Keep the existing `due_date` column. The portal now presents `due_date` as the task **End Date**, so existing tasks continue to work without migration.
+
+Final Tasks columns:
+
+`id | project_id | timeline_id | title | assignee | start_date | due_date | status | scope`
+
+Existing tasks can leave `start_date` blank. In the Calendar they will appear as a one-day task on their existing `due_date`. New tasks can have both Start Date and End Date and will span that date range on the Calendar.

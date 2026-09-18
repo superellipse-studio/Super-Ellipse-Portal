@@ -19,6 +19,7 @@ export interface Task {
   timeline_id: string;
   title: string;
   assignee: string;
+  start_date: string;
   due_date: string;
   status: "open" | "in_progress" | "done" | string;
   scope: "this_week" | "next_week" | "unscheduled" | string;

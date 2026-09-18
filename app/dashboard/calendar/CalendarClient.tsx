@@ -62,8 +62,12 @@ export default function CalendarClient({
     .filter((i) => i.due) as (Invoice & { due: Date })[];
 
   const tasksWithDates = tasks
-    .map((t) => ({ ...t, due: safeDate(t.due_date) }))
-    .filter((t) => t.due) as (Task & { due: Date })[];
+    .map((t) => {
+      const end = safeDate(t.due_date);
+      const start = safeDate(t.start_date) || end;
+      return { ...t, start, end };
+    })
+    .filter((t) => t.start && t.end) as (Task & { start: Date; end: Date })[];
 
   const selectedTimelines = selectedDay
     ? timelineWithDates.filter((t) => isWithinInterval(selectedDay, { start: t.start, end: t.end }))
@@ -72,7 +76,7 @@ export default function CalendarClient({
     ? invoicesWithDates.filter((i) => isSameDay(i.due, selectedDay))
     : [];
   const selectedTasks = selectedDay
-    ? tasksWithDates.filter((t) => isSameDay(t.due, selectedDay))
+    ? tasksWithDates.filter((t) => isWithinInterval(selectedDay, { start: t.start, end: t.end }))
     : [];
 
   return (
@@ -119,7 +123,7 @@ export default function CalendarClient({
               isWithinInterval(day, { start: t.start, end: t.end })
             );
             const dayInvoices = invoicesWithDates.filter((i) => isSameDay(i.due, day));
-            const dayTasks = tasksWithDates.filter((t) => isSameDay(t.due, day));
+            const dayTasks = tasksWithDates.filter((t) => isWithinInterval(day, { start: t.start, end: t.end }));
             const hasContent = dayTimelines.length > 0 || dayInvoices.length > 0 || dayTasks.length > 0;
             return (
               <button
@@ -137,7 +141,7 @@ export default function CalendarClient({
                   </span>
                   <div className="flex items-center gap-1">
                     {dayTasks.length > 0 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-black/50" title={`${dayTasks.length} task(s) due`} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-black/50" title={`${dayTasks.length} task(s) scheduled`} />
                     )}
                     {dayInvoices.length > 0 && <span className="text-[10px] font-bold">$</span>}
                   </div>
@@ -165,17 +169,23 @@ export default function CalendarClient({
                   {dayTimelines.length > 3 && (
                     <div className="text-[9px] text-black/50 px-1">+{dayTimelines.length - 3} more</div>
                   )}
-                  {dayTasks.slice(0, 2).map((t) => (
-                    <div
-                      key={t.id}
-                      title={t.title}
-                      className={`text-[10px] px-1 py-0.5 truncate border-l-2 ${
-                        t.status === "done" ? "border-black/20 text-black/35 line-through" : "border-black/40 text-black/70"
-                      }`}
-                    >
-                      {t.title}
-                    </div>
-                  ))}
+                  {dayTasks.slice(0, 2).map((t) => {
+                    const startsToday = isSameDay(t.start, day);
+                    const endsToday = isSameDay(t.end, day);
+                    return (
+                      <div
+                        key={t.id}
+                        title={`${t.title} · ${format(t.start, "d MMM")} → ${format(t.end, "d MMM")}`}
+                        className={`text-[9px] px-1.5 py-0.5 truncate bg-black/10 ${
+                          startsToday ? "rounded-l-md" : "rounded-l-none"
+                        } ${endsToday ? "rounded-r-md" : "rounded-r-none"} ${
+                          t.status === "done" ? "text-black/30 line-through opacity-60" : "text-black/70"
+                        }`}
+                      >
+                        {startsToday ? `Task · ${t.title}` : t.title}
+                      </div>
+                    );
+                  })}
                 </div>
               </button>
             );
@@ -193,7 +203,7 @@ export default function CalendarClient({
             ))}
           <span className="font-medium text-black">$ Invoice due</span>
           <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-black/50 inline-block" /> Task due
+            <span className="w-1.5 h-1.5 rounded-full bg-black/50 inline-block" /> Task schedule
           </span>
         </div>
       </div>
@@ -224,7 +234,10 @@ export default function CalendarClient({
                     <span className={`flex-1 text-sm ${t.status === "done" ? "line-through text-black/40" : ""}`}>
                       {t.title}
                     </span>
-                    <span className="text-[10px] uppercase tracking-wide text-black/45">{t.assignee}</span>
+                    <div className="text-right shrink-0">
+                      <span className="block text-[10px] uppercase tracking-wide text-black/45">{t.assignee}</span>
+                      <span className="block text-[9px] text-black/40">{format(t.start, "d MMM")} → {format(t.end, "d MMM")}</span>
+                    </div>
                   </div>
                 ))}
               </div>
